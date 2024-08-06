@@ -7,7 +7,8 @@ RUN mvn clean install
 #Build the Tomcat container
 FROM tomcat:jre21
 #set environment variables below and uncomment the line. Or, you can manually set your environment on your server.
-#ENV JDBC_URL=jdbc:postgresql://<host>:<port>/<database> JDBC_USERNAME=<username> JDBC_PASSWORD=<password>
+# ENV JDBC_URL=jdbc:postgresql://<host>:<port>/<database> JDBC_USERNAME=<username> JDBC_PASSWORD=<password>
+ENV JDBC_URL=jdbc:postgresql://ahc-hobi-gpu01.ahc.ufl.edu:5432/adrd JDBC_USERNAME=postgres JDBC_PASSWORD=168198321
 
 # Copies updated server.xml to increase HTTP Header Length allowed
 COPY server.xml $CATALINA_HOME/conf/
