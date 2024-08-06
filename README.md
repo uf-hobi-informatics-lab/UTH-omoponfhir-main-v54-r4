@@ -1,16 +1,16 @@
-# Welcome to OMOPonFHIR Github Repository
+# OMOPonFHIR Setup Guide
 
-This repository is an installable server deployment package that locks down the version of included components (using submodules). Please use the following step to compile and deploy the server. You may need to customize some of the environment variables. 
+This repository is an installable server deployment package that locks down the version of included components (using submodules). Please use the following step to compile and deploy the server. You may need to customize some of the environment variables.
 
-**Note:** If you want to see current snapshots of OMOPonFHIR components or other versions of FHIR and OMOP, please visit the OMOPonFHIR GitHub organization at https://github.com/omoponfhir/
+Note: If you want to see current snapshots of OMOPonFHIR components or other versions of FHIR and OMOP, please visit the OMOPonFHIR GitHub organization at https://github.com/omoponfhir/
 
-This package is tested with Google Big Query instance. And, the server supports mapping for FHIR R4 and OMOP v5.4. Please see omopv5_4_setup/ folder for some help on ddls for extra tables/views. Database ddls are also included. 
+This package is tested with Google Big Query instance. And, the server supports mapping for FHIR R4 and OMOP v5.4. Please see omopv5_4_setup/ folder for some help on ddls for extra tables/views. Database ddls are also included.
 
-```
 **Note:** This repository contains submodules of anoter repositories that are needed. If you want to participate in 
 development and contribute, please use the repositories directly as this submodule points to a certain commit point. 
 Refer the follow repositories and use the latest to work on the code.
 
+```
 - path = omoponfhir-omopv5-sql
 - url = https://github.com/omoponfhir/omoponfhir-omopv5-sql.git
 - branch = 5.4
@@ -23,80 +23,164 @@ Refer the follow repositories and use the latest to work on the code.
 - url = https://github.com/omoponfhir/omoponfhir-r4-server.git
 - branch = sqlRender
 ```
-        
-## Download the package
-```
+
+## 1. Setup the repository and submodules
+
+```bash
+# Clone the repository, including submodules with --recurse
 git clone --recurse https://github.com/omoponfhir/omoponfhir-main-v54-r4.git
-cd omoponfhir-main-v54-r4/
+# Change directory to the cloned repository
+cd omoponfhir-main-v54-r4
+```
+You will need `Apache Maven` installed to proceed with the next steps, you can check if you have it in `$PATH` with the following command:
+```bash
+which mvn # Should return the path to the maven executable
+```
+If you have it installed, you can skip the next step. If not, please install it before proceeding.
+
+### 1.1 Maven Installation
+If you don't have it installed, please download it from [here](https://maven.apache.org/download.cgi).
+
+The package seems to be targeted at openJDK 21 or later, check your java version with:
+```bash
+java -version
+```
+If you don't have it installed, you can download it from [here](https://jdk.java.net/22/) and follow the installation instructions.
+
+### 1.2 Build the project
+After `Maven` is installed, in the cloned repository, run the following command to build the project:
+```bash
 mvn clean install
-cd omoponfhir-r4-server/target/
-scp omoponfhir-r4-server.war <vm url>:omoponfhir-r4-server.war
 ```
 
-## Prepare your OMOP database
+## 2. Setup the OMOP database
 
-If you don't have a OMOP database yet, you will need to create one. In case you already have one you will need to add additional tables for it to work with this tool. For both these cases you can use https://github.com/omoponfhir/omopv5_4_setup as a reference and start at either step 1 or 6.
-
-## Setting up vocabulary schema 
-
-If you want to setup (or have) vocabulary schema, you can make OMOPonFHIR to point to the vocabulary schema for all vocabulary tables. In the vocabulary schema, the tables defined here must exist (https://github.com/SmartChartSuite/Registry-Database/blob/main/omoponfhir_v5_4_setup/OMOPCDM_postgresql_5.4_vocabulary_ONLY_ddl.sql) 
-
-With this setting, you can run multiple OMOPonFHIR instances with the same vocabulary schema. This makes the vocabulary management easier. Please note that All schemas must exist in the same database. 
-
-Once the schemas are set up, you need the following environment variables to specify schemas for data and vocabulary.
-
-```
-export JDBC_DATA_SCHEMA="omopv54"
-export JDBC_VOCABS_SCHEMA="vocab"
+Clone this repository with:
+```bash
+git clone git@github.com:omoponfhir/omopv5_4_setup.git
 ```
 
-The variables above assume that vocabulary related tables are in "vocab" schema, and data are in "omopv54" schema.  
+If you already have a running omop database instance, start from step 2.6.
 
-## Deploy to tomcat ##
+### 2.1. Fetch Vocabulary and inject CPT codes
+**DO NOT** download vocabularies frin Athena, instead use the provided vocabulary files.
+```bash
+#TODO Add the vocabulary files to the repository
 ```
-cp omoponfhir-r4-server.war <tomcat_directory>/webapps/
-cd <tomcat_directory>/bin
-vi setenv.sh
-```
-## Deploy using Docker
-```
-sudo docker build -t omoponfhir .
-sudo docker run --name omoponfhir -p 8080:8080 -d omoponfhir:latest
-```
+You will need a UMLS API key to perform the CPT code injection. You can get one from [here](https://documentation.uts.nlm.nih.gov/rest/authentication.html).
 
-OMOPonFHIR is a web application. If it's deployed using Docker, then you need to get how war file is deployed in the dockerfile. Default is set to ROOT.war, which means it's running at the / path. If you are running omoponfhir on your local PC, you can use your browser with URL, http://localhost:8080/, to launch test overlay HAPI FHIR GUI. Please note that the port number depends one the docker run command above. If you are running omoponfhir on the remote server, then you need to use the remote server's URL. In both cases, please make sure your firewall is not blocking the traffic.
-
-OMOPonFHIR provides FHIR APIs and operations. The HAPI FHIR GUI is a FHIR client running separately. So, even if this is not running correctly, the services may be running. The FHIR API URL for OMOPonFHIR http://localhost(or server hostname):8080/fhir. You can do GET http://localhost(or server hostname):8080/fhir/metadata to see if OMOPonFHIR is running OK. In most cases, if services are not running, it's because of the database connection and its credential. Please check this in your environment variable. 
-
-## Configuration of webapp
-In setenv.sh file, add the following environment variables. Change the values for your environment 
+After you have the API key, you can inject the CPT codes with the following command:
+```bash
+# In the downloaded vocabulary repository
+# Make the script executable
+chmod +x cpt.sh
+# Run the script with the API key
+./cpt.sh <API_KEY>
 ```
-export JDBC_URL="jdbc:postgresql://url"
-export JDBC_USERNAME="<your username of JDBC DB instance>"
-export JDBC_PASSWORD="<your password of JDBC DB instance>"
-# export JDBC_DRIVER="org.postgresql.Driver"
-export JDBC_DATASOURCENAME="org.postgresql.ds.PGSimpleDataSource"
-export JDBC_POOLSIZE=5
-# And, belows are schema naems for data and vocabulary in the database specified above.
-export JDBC_DATA_SCHEMA="public"
-export JDBC_VOCABS_SCHEMA="public"
-export SMART_INTROSPECTURL="<your_omoponfhir_root_server_NOT_a_fhir_url_base, eg: localhost:8080/omoponfhir-dstu2-server/>/smart/introspect"
-export SMART_AUTHSERVERURL="<your_omoponfhir_root_server_NOT_a_fhir_url_base>/smart/authorize"
-export SMART_TOKENSERVERURL="<your_omoponfhir_root_server_NOT_a_fhir_url_base>/smart/token"
-export AUTH_BEARER="<any value>"
-export AUTH_BASIC="<username_you_want>:<password_you_want>"
-export FHIR_READONLY="<True or False>"
-export SERVERBASE_URL="<your fhir base url, eg: http://localhost:8080/omoponfhir-dstu2-server/fhir/>"
-export LOCAL_CODEMAPPING_FILE_PATH="<whatever the path you want to put your local mapping file. eg: /temp/my_local_code or none>"
-export MEDICATION_TYPE="code"
-export TARGETDATABASE="<SqlRenderTargetDialect value such as bigquery or postgresql. If you leave this empty, it will be postgresql. Use string from sqlRender>"
-export OMOPONFHIR_NAME="OMOP v5.4 on FHIR R4"
-export BIGQUERYDATASET="<BigQuery Dataset Name. It will be ignored if TARGETDATABASE is not bigquery>"
-export BIGQUERYPROJECT="<BigQuery Project Name. It will be ignored if TARGETDATABASE is not bigquery>"
+This takes a while (about 1 hour and a half), so be patient.
+### 2.2 Prepare Docker container
+Pull the image of the PostgreSQL:
+```bash
+docker pull postgres
+```
+Run the container with the following command:
+```bash
+docker run --name <CONTAINER_NAME> -d -p <PORT_ON_HOST_MACHINE>:<PORT_POSTGRES> -e POSTGRES_PASSWORD=<PASSWORD> --restart unless-stopped postgres:latest
+
+# Example
+# docker run --name omopv54 -d -p 5432:5432 -e POSTGRES_PASSWORD=mypsw --restart unless-stopped postgres:latest
 ```
 
-## Configuration of Docker deployment
-This is not yet tested and validated. The same environment variables are applied here. The environment variable must be defined either using Dockerfile or docker command line when the docker image is instantiated to start running. One way to do this would be to create a env.list file containing the variables from above and then running the following command to start your deployment:
+### 2.3 Create new database
+Connect to the container with the following command:
+```bash
+# Connect to the container
+docker exec -it <CONTAINER_NAME> 
+# Run psql
+psql -U postgres
 ```
-docker run --env-file env.list --name omoponfhir -p 8080:8080 -d omoponfhir:latest
+Create a new database with the following command:
+```sql
+CREATE DATABASE <DATABASE_NAME>;
+```
+*Optional*: You can create a schema for the database with the following command:
+```sql
+CREATE SCHEMA <SCHEMA_NAME>;
+```
+If no schema is created, the default schema is `public`.
+### 2.4 Get DDLs
+**DO NOT** go to the official OHDSI Github repository to download the DDLs, instead use the provided DDLs at `omopv5_4_setup/CommonDataModel-5.4.0/inst/ddl/5.4/postgresql/`.
+There're 4 files in the folder:
+- `OMOPCDM_postgresql_5.4_constraints.sql`
+- `OMOPCDM_postgresql_5.4_ddl.sql`
+- `OMOPCDM_postgresql_5.4_indices.sql`
+- `OMOPCDM_postgresql_5.4_primary_keys.sql`
+
+In each of them, make sure the schema is correct, and if you have created a schema in the previous step, replace the current schema with the schema name, otherwise make sure the schema is `public`.
+
+### 2.5 Create DDL
+Run **ONLY** the `OMOPCDM_postgresql_5.4_ddl.sql` file to create the tables in the database with:
+```bash
+psql -h localhost -p <PORT_POSTGRES> -U <POSTGRES_USER_NAME> -W -d <DATABASE_NAME> -f OMOPCDM_postgresql_5.4_ddl.
+```
+This should create tables in the database `<DATABASE_NAME>`.
+You can verify the tables in the database shell with the following command:
+```sql
+-- Connect to the database
+\c <DATABASE_NAME>
+-- List all tables
+\dt
+```
+
+### 2.6 Import Vocabulary
+The `sql` file for importing the vocabulary is provided in the `omopv5_4_setup/VocabImport/OMOP CDM vocabulary load - PostgreSQL.sql`. You should modify this file so that the path points to the right location of the vocabulary files generated in step 2.1, e.g.:
+```sql
+-- Original line:
+\copy DRUG_STRENGTH FROM '<your path to vocabularies>/DRUG_STRENGTH.csv' WITH DELIMITER E'\t' CSV HEADER QUOTE E'\b' ;
+
+-- Modified line:
+\copy DRUG_STRENGTH FROM '/path/to/vocabularies/DRUG_STRENGTH.csv' WITH DELIMITER E'\t' CSV HEADER QUOTE E'\b' ;
+```
+
+Run the file with the following command:
+```bash
+psql -h localhost -p <PORT_POSTGRES> -U <POSTGRES_USER_NAME> -W -d <DATABASE_NAME> -f path/to/OMOP\ CDM\ vocabulary\ load\ -\ PostgreSQL.sql
+```
+
+This should output:
+```
+COPY 2981807
+COPY 7407686
+COPY 46545874
+COPY 80436514
+COPY 2741949
+COPY 91
+COPY 696
+COPY 423
+COPY 50
+```
+
+Verify the vocabulary tables with the following command:
+```sql
+-- Connect to the database
+\c <DATABASE_NAME>
+
+-- List all tables
+\dt
+
+-- List Size of the tables
+select
+  table_name,
+  pg_size_pretty(pg_total_relation_size(quote_ident(table_name))),
+  pg_total_relation_size(quote_ident(table_name))
+from information_schema.tables
+where table_schema = 'public' -- Modify this if you have a different schema
+order by 3 desc;
+
+-- OR List all tables with their number of live rows
+SELECT schemaname,relname,n_live_tup 
+  FROM pg_stat_user_tables 
+ORDER BY n_live_tup DESC;
+
+-- If all of the tables are empty, something must be wrong you can try to re-import the vocabulary
 ```
