@@ -184,3 +184,38 @@ ORDER BY n_live_tup DESC;
 
 -- If all of the tables are empty, something must be wrong you can try to re-import the vocabulary
 ```
+
+### 2.7 Finish other DDLs
+In the `omopv5_4_setup` directory, there are 4 other text files that you should run in the database:
+```bash
+# Run the following command in order
+
+# person
+psql -h localhost -p <PORT_POSTGRES> -U <POSTGRES_USER_NAME> -W -d <DATABASE_NAME> -f omoponfhir_f_person_ddl.txt
+
+# observation size change
+psql -h localhost -p <PORT_POSTGRES> -U <POSTGRES_USER_NAME> -W -d <DATABASE_NAME> -f observation_column_size_change_ddl.txt
+
+# observation
+psql -h localhost -p <PORT_POSTGRES> -U <POSTGRES_USER_NAME> -W -d <DATABASE_NAME> -f omoponfhir_v5.4_f_observation_ddl.txt
+
+# immunization
+psql -h localhost -p <PORT_POSTGRES> -U <POSTGRES_USER_NAME> -W -d <DATABASE_NAME> -f omoponfhir_v5.2_f_immunization_view_ddl.txt
+```
+
+### 2.8 Create CDM primary keys, constraints, and indices
+In the `omopv5_4_setup/CommonDataModel-5.4.0/inst/ddl/5.4/postgresql` directory, there are 3 other text files that you should run in the database:
+```bash
+# Run the following command in order
+
+# primary keys
+psql -h localhost -p <PORT_POSTGRES> -U <POSTGRES_USER_NAME> -W -d <DATABASE_NAME> -f OMOPCDM_postgresql_5.4_primary_keys.sql
+
+# constraints
+psql -h localhost -p <PORT_POSTGRES> -U <POSTGRES_USER_NAME> -W -d <DATABASE_NAME> -f OMOPCDM_postgresql_5.4_constraints.sql
+# There are some errors when running the constraints file #TODO fix the constraints file
+
+# indices
+psql -h localhost -p <PORT_POSTGRES> -U <POSTGRES_USER_NAME> -W -d <DATABASE_NAME> -f OMOPCDM_postgresql_5.4_indices.sql
+```
+
